@@ -5,6 +5,7 @@ bindkey -v
 autoload -Uz colors; colors
 autoload -Uz add-zsh-hook
 autoload -Uz terminfo
+autoload -Uz is-at-least
 
 terminfo_down_sc=$terminfo[cud1]$terminfo[cuu1]$terminfo[sc]$terminfo[cud1]
 left_down_prompt_preexec() {
@@ -35,9 +36,30 @@ zle -N zle-line-finish
 zle -N zle-keymap-select
 zle -N edit-command-line
 
+# Helper function
+# use 'zle -la' option
+# zsh -la option returns true if the widget exists
+has_widgets() {
+    if [[ -z $1 ]]; then
+        return 1
+    fi
+    zle -la "$1"
+    return $?
+}
+
+# Helper function
+# use bindkey -l
+has_keymap() {
+    if [[ -z $1 ]]; then
+        return 1
+    fi
+    bindkey -l "$1" >/dev/null 2>&1
+    return $?
+}
+
 # Easy to escape
 bindkey -M viins 'jj'  vi-cmd-mode
-bindkey -M vivis 'jj'  vi-visual-exit
+has_keymap "vivis" && bindkey -M vivis 'jj' vi-visual-exit
 
 # Merge emacs mode to viins mode
 bindkey -M viins '\er' history-incremental-pattern-search-forward
@@ -76,13 +98,9 @@ peco-select-history()
         # clear displat
         zle clear-screen
     else
-        # use module
-        autoload -Uz is-at-least
-
         if is-at-least 4.3.9; then
-            # zsh -la option returns true if the widget exists
-            # and when return value is true, bind key as ctrl-r
-            zle -la history-incremental-pattern-search-backward && bindkey "^r" history-incremental-pattern-search-backward
+            # Check if history-incremental-pattern-search-forward is available
+            has_widgets "history-incremental-pattern-search-backward" && bindkey "^r" history-incremental-pattern-search-backward
         else
             history-incremental-search-backward
         fi
@@ -105,16 +123,6 @@ do-enter() {
 }
 zle -N do-enter
 bindkey '^m' do-enter
-
-# Helper function
-# use 'zle -la' option
-has_widgets() {
-    if [[ -z $1 ]]; then
-        return 1
-    fi
-    zle -la "$1"
-    return $?
-}
 
 # https://github.com/zsh-users/zsh-history-substring-search
 has_widgets 'history-substring-search-up' &&
